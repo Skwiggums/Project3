@@ -46,23 +46,23 @@ class labelvalues:
             indices=(self.dataarray[:]==i)
             self.dataarray[indices]=self.encodearray[i]
         return self.dataarray
-#a=(train_labels[:,2]=='Male')
-#train_labels[a,2]=1
 
-
+#pulling in image data
 train_images = [] #got this from stack exchange:https://stackoverflow.com/questions/50557468/load-all-images-from-a-folder-using-pil
 for f in glob.iglob("C:/Users/vwilso17/Documents/Grad School/COSC525Deeplearning/code/projects/project3/train/*"):
     train_images.append(np.asarray(pl.Image.open(f)))
 train_images = np.array(train_images)
+train_extremes=[min(train_images.reshape(86744*1024)),max(train_images.reshape(86744*1024))]#min-max scaling
+train_images=(train_images-train_extremes[1])/(train_extremes[1]-train_extremes[0])
 
 val_images = [] #got this from stack exchange:https://stackoverflow.com/questions/50557468/load-all-images-from-a-folder-using-pil
 for f in glob.iglob("C:/Users/vwilso17/Documents/Grad School/COSC525Deeplearning/code/projects/project3/val/*"):
     val_images.append(np.asarray(pl.Image.open(f)))
 val_images = np.array(val_images)
+val_extremes=[min(val_images.reshape(10954*1024)),max(val_images.reshape(10954*1024))]#min-max scaling
+val_images=(val_images-val_extremes[1])/(val_extremes[1]-val_extremes[0])
 
-#train_dataset=tf.data.Dataset.from_tensor_slices((train_images, train_labels))#not using currently
-#val_dataset=tf.data.Dataset.from_tensor_slices((val_images, val_labels))#not using currently
-
+#reshaping image data by flattening 32x32 image data to 1x1024. Converting to float for keras
 train_images=train_images.reshape(86744,1024)
 train_images=train_images.astype('float32')
 val_images=val_images.reshape(10954,1024)
@@ -71,19 +71,34 @@ val_images=val_images.astype('float32')
 
 ## Task 1, FCNN
 class networks:
-    def __init__(self):
+    def __init__(self,tasknum=1,xtrain=train_images,ytrain=train_labels,xval=val_images,yval=val_labels,categories=labels):
         print('init')#never prints
-
-    def FCNN(self,lr=0.01,lrd=0,mom=0.0,tasknum=1,xtrain=train_images,ytrain=train_labels,xval=val_images,yval=val_labels,categories=labels):#lr=learning rate, lrd=learning rate decay, mom=momentum,tasknum=what to classify
-        self.lr=lr
-        self.lrd=lrd
-        self.mom=mom
         self.tasknum=tasknum
         self.xtrain=xtrain
         self.ytrain=ytrain
         self.xval=xval
         self.yval=yval
         self.categories=labels
+
+        #converting strings to numeric so Keras can use labels
+        self.ytrain=self.ytrain[:,self.tasknum+1]
+        self.yval=self.yval[:,self.tasknum+1]
+        encode=labelvalues()
+        self.ytrain=encode.encode(self.ytrain,categories[self.tasknum])
+        self.ytrain=self.ytrain.astype('float32')
+        self.yval=encode.encode(self.yval,categories[self.tasknum])
+        self.yval=self.yval.astype('float32')
+
+        #creating test data from training data
+        self.xtest=self.xtrain[-10000:]#since we're grabbing test data from pre-normalized training data, test data is also normalized
+        self.ytest=self.ytrain[-10000:]
+        self.xtrain=self.xtrain[:-10000]
+        self.ytrain=self.ytrain[:-10000]
+    
+    def fcnn(self,lr=0.5,lrd=0,mom=0.0):#lr=learning rate, lrd=learning rate decay, mom=momentum,tasknum=what to classify
+        self.lr=lr
+        self.lrd=lrd
+        self.mom=mom
 
         #network set-up 
         model=keras.Sequential()
@@ -93,22 +108,10 @@ class networks:
         model.add(layers.Dense(100, activation="relu"))
         if self.tasknum==0:#classify based on age
             model.add(layers.Dense(9,activation="softmax"))
-            ytrain=ytrain[:,self.tasknum+1]
-            encode=labelvalues()
-            ytrain=encode.encode(ytrain,categories[0])
-            ytrain=ytrain.astype('float32')
         elif self.tasknum==1:#classify based on gender
             model.add(layers.Dense(2,activation="softmax"))
-            ytrain=ytrain[:,self.tasknum+1]
-            encode=labelvalues()
-            ytrain=encode.encode(ytrain,categories[1])
-            ytrain=ytrain.astype('float32')
         else:#classify based on race
             model.add(layers.Dense(7,activation="softmax"))
-            ytrain=ytrain[:,self.tasknum+1]
-            encode=labelvalues()
-            ytrain=encode.encode(ytrain,categories[2])
-            ytrain=ytrain.astype('float32')
         model.summary()
     
         model.compile(
@@ -116,22 +119,35 @@ class networks:
         loss=keras.losses.SparseCategoricalCrossentropy(),
         metrics=[keras.metrics.SparseCategoricalCrossentropy()],
         )
+        
+        #training and validating
+        print('training and validating')
+        history=model.fit(self.xtrain,self.ytrain,epochs=3,validation_data=(self.xval,self.yval))#if you don't specify a batch size, it uses 32 for mini-batch GD
+        #testing
+        print('testing')
+        results=model.evaluate(self.xtest,self.ytest,batch_size=32)
+        return [history,results]
 
-        #training
+        #plotting/final results summary
 
-        model.fit(xtrain,ytrain,epochs=3)
-        #validation/classification
+    def cnn(self):
+        print('init')
+    def cnnhomebrew(self):
+        print('init')
+    def cnntwo(self):
+        print('init')
+    def vae(self):
+        print('init')
 
-    #plotting/final results summary
-networktest=networks()
-FCNNtest=networktest.FCNN()
-print('test')
+NETWORKS=networks()
 
-
+# Task 1, FCNN
+FCNN=NETWORKS.fcnn()
 ## Task 2, CNN
-
+CNN=NETWORKS.cnn()
 ## Task 3, homebrew CNN
-
+CNNHOMEBREW=NETWORKS.cnnhomebrew()
 ## Task 4, multitask CNN
-
+CNNTWO=NETWORKS.cnntwo()
 ## Task 5, Variational Auto-Encoder
+VAE=NETWORKS.vae()
