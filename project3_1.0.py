@@ -9,6 +9,7 @@ from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
 from tensorflow.keras import optimizers
+import matplotlib.pyplot as plt
 
 ##pulling in test and training data and combining into tensorflow datasets
 val_labels=pd.read_csv("fairface_label_val.csv")
@@ -71,7 +72,7 @@ val_images=val_images.astype('float32')
 
 ## Task 1, FCNN
 class networks:
-    def __init__(self,tasknum=1,xtrain=train_images,ytrain=train_labels,xval=val_images,yval=val_labels,categories=labels):
+    def __init__(self,tasknum=0,xtrain=train_images,ytrain=train_labels,xval=val_images,yval=val_labels,categories=labels):
         print('init')#never prints
         self.tasknum=tasknum
         self.xtrain=xtrain
@@ -90,10 +91,10 @@ class networks:
         self.yval=self.yval.astype('float32')
 
         #creating test data from training data
-        self.xtest=self.xtrain[-10000:]#since we're grabbing test data from pre-normalized training data, test data is also normalized
-        self.ytest=self.ytrain[-10000:]
-        self.xtrain=self.xtrain[:-10000]
-        self.ytrain=self.ytrain[:-10000]
+        self.xtest=self.xtrain[-100:]#since we're grabbing test data from pre-normalized training data, test data is also normalized
+        self.ytest=self.ytrain[-100:]
+        self.xtrain=self.xtrain[:-100]
+        self.ytrain=self.ytrain[:-100]
     
     def fcnn(self,lr=0.5,lrd=0,mom=0.0):#lr=learning rate, lrd=learning rate decay, mom=momentum,tasknum=what to classify
         self.lr=lr
@@ -117,18 +118,56 @@ class networks:
         model.compile(
         optimizer=keras.optimizers.SGD(learning_rate=self.lr,momentum=self.mom),#default lr=0.01, default mom=0.0
         loss=keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[keras.metrics.SparseCategoricalCrossentropy()],
+        metrics=[keras.metrics.SparseCategoricalAccuracy()],
         )
         
         #training and validating
         print('training and validating')
-        history=model.fit(self.xtrain,self.ytrain,epochs=3,validation_data=(self.xval,self.yval))#if you don't specify a batch size, it uses 32 for mini-batch GD
+        history=model.fit(self.xtrain,self.ytrain,epochs=5,validation_data=(self.xval,self.yval))#if you don't specify a batch size, it uses 32 for mini-batch GD
         #testing
         print('testing')
-        results=model.evaluate(self.xtest,self.ytest,batch_size=32)
-        return [history,results]
+        results=model.evaluate(self.xtest,self.ytest)
+        print('predicting')
+        #predicting
+        predictions = model.predict(self.xtest[:3])
+        
+        #plotting/final results summary, from https://machinelearningmastery.com/display-deep-learning-model-training-history-in-keras/
+        plt.plot(history.history['sparse_categorical_accuracy'])
+        plt.plot(history.history['val_sparse_categorical_accuracy'])
+        if self.tasknum==0:#classify based on age
+            plt.title('model accuracy for age classification')
+        elif self.tasknum==1:#classify based on gender
+            plt.title('model accuracy for gender classification')
+        else:#classify based on race
+            plt.title('model accuracy for race classification')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'validation'], loc='upper left')
+        plt.show()
 
-        #plotting/final results summary
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        if self.tasknum==0:#classify based on age
+            plt.title('model loss for age classification')
+        elif self.tasknum==1:#classify based on gender
+            plt.title('model loss for gender classification')
+        else:#classify based on race
+            plt.title('model loss for race classification')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'validation'], loc='upper left')
+        plt.show()
+
+        trainingloss=history.history['loss']
+        validationloss=history.history['val_loss']
+
+        print('final accuracy is %f' %results[1])
+
+        predictions = np.argmax(predictions, axis=1)
+        
+
+        return [trainingloss,validationloss,history,results,confmatrix]
+
 
     def cnn(self):
         print('init')
