@@ -16,7 +16,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 class preprocess:
     def _init_(self):
-        rpint('init')
+        print('init')
 
     def firsttimerun(self):#only run this once to create the needed datasets. Takes a ton of time to re-build datasets everytime
         ##pulling in test and training data and combining into tensorflow datasets
@@ -137,7 +137,7 @@ class networks:
         self.yval=keras.utils.to_categorical(self.yval)
         self.yval=self.yval.astype('int32')
     
-    def fcnn(self,lr=0.5,lrfactor=0.2,mom=0.1,epochs=10):#lr=learning rate, lrd=learning rate decay, mom=momentum,tasknum=what to classify
+    def fcnn(self,lr=0.1,lrfactor=0.2,mom=0.1,epochs=10):#lr=learning rate, lrd=learning rate decay, mom=momentum,tasknum=what to classify
         self.lr=lr
         self.lrfactor=lrfactor
         self.mom=mom
