@@ -366,9 +366,7 @@ class networks:
         plt.show()
         return [trainingloss,validationloss,history,results,confmatrix]
 #####################################################################################################################
-'''
-    def cnntwo(self,tasknum=0,lr=0.5,lrfactor=0.2,mom=0.1,epochs=10):
-        self.tasknum=tasknum
+    def cnntwo(self,lr=0.5,lrfactor=0.2,mom=0.1,epochs=2):
         self.lr=lr
         self.lrfactor=lrfactor
         self.mom=mom
@@ -376,21 +374,26 @@ class networks:
         self.xtrain=np.expand_dims(self.xtrain.reshape(86744,32,32), axis=3)#reshaping for convolution
         self.xval=np.expand_dims(self.xval.reshape(10954,32,32), axis=3)#reshaping for convolution
         
-        
-        
-        
+        # setting up to task specific inputs for gender and race
+        self.clean=cleandata()
+        self.ytgender=self.clean.training(self.ytrain[:,2])
+        self.ytrace=self.clean.training(self.ytrain[:,3])
+        self.yvgender=self.clean.training(self.yval[:,2])
+        self.yvrace=self.clean.training(self.yval[:,3])
+        self.yvgendertruth,self.genderlabels=self.clean.cmatrix(self.yvaltruth[:,2])
+        self.yvracetruth,self.racelabels=self.clean.cmatrix(self.yvaltruth[:,3])
         
         #two task specific reworks
         
-        inputsinputs=keras.Input(shape=(32,32,1))
+        inputs=keras.Input(shape=(32,32,1))
         x=layers.Conv2D(filters=40,kernel_size=5,activation="relu")(inputs)
         x=layers.MaxPooling2D()(x)
         x=layers.Flatten()(x)
         y=layers.Dense(100, activation="relu")(x)
         z=layers.Dense(100, activation="relu")(x)
         gender=layers.Dense(2,activation="softmax")(y)#classify gender
-        raceoutput=layers.Dense(7,activation="softmax")(z)
-        model=keras.Model(inputs=[inputs]), outputs=[gender,race])
+        race=layers.Dense(7,activation="softmax")(z)
+        model=keras.Model(inputs=[inputs], outputs=[gender,race])
         model.summary()
     
         model.compile(
@@ -408,17 +411,12 @@ class networks:
         results=model.evaluate(self.xval,[self.yvgender,self.yvrace])
         print('predicting')
         #predicting
-        predictions = model.predict_classes(self.xval)
+        predictions = model.predict(self.xval)
         
         #plotting/final results summary, from https://machinelearningmastery.com/display-deep-learning-model-training-history-in-keras/
         plt.plot(history.history['categorical_accuracy'])
         plt.plot(history.history['val_categorical_accuracy'])
-        if self.tasknum==0:#classify based on age
-            plt.title('model accuracy for age classification')
-        elif self.tasknum==1:#classify based on gender
-            plt.title('model accuracy for gender classification')
-        else:#classify based on race
-            plt.title('model accuracy for race classification')
+        plt.title('model accuracy for gender classification')
         plt.ylabel('accuracy')
         plt.xlabel('epoch')
         plt.legend(['train', 'validation'], loc='upper left')
@@ -426,31 +424,23 @@ class networks:
 
         plt.plot(history.history['loss'])
         plt.plot(history.history['val_loss'])
-        if self.tasknum==0:#classify based on age
-            plt.title('model loss for age classification')
-        elif self.tasknum==1:#classify based on gender
-            plt.title('model loss for gender classification')
-        else:#classify based on race
-            plt.title('model loss for race classification')
+        plt.title('model loss for gender classification')
         plt.ylabel('loss')
         plt.xlabel('epoch')
         plt.legend(['train', 'validation'], loc='upper left')
         plt.show()
         trainingloss=history.history['loss']
         validationloss=history.history['val_loss']
-        print('final validation accuracy is %f' %results[1])
+        print('final validation accuracy for gender is %f' %results[1])
         
-        confmatrix=sklearn.metrics.confusion_matrix(self.yvaltruth,predictions)
-        self.tasktypes=['age confusion matrix','Gender confusion matrix','race confusion matrix']
-        self.tasktypes=self.tasktypes[self.tasknum]
-        cmdisp=sklearn.metrics.ConfusionMatrixDisplay(confusion_matrix=confmatrix,display_labels=self.cm_plot_labels)
+        genderconfmatrix=sklearn.metrics.confusion_matrix(self.yvgendertruth,predictions)
+        cmdisp=sklearn.metrics.ConfusionMatrixDisplay(confusion_matrix=genderconfmatrix,display_labels=self.genderlabels)
         cmdisp.plot()
         plt.show()
         return [trainingloss,validationloss,history,results,confmatrix]
 
     def vae(self):
         print('init')
-'''
 
 #Pre-processing
 PREPROCESS=preprocess()
@@ -459,12 +449,12 @@ train_images,train_labels,val_images,val_labels=PREPROCESS.runeverytime()
 
 # Task 1, FCNN
 NETWORKS=networks(xtrain=train_images,ytrain=train_labels,xval=val_images,yval=val_labels)
-FCNN=NETWORKS.fcnn()
+#FCNN=NETWORKS.fcnn()
 ## Task 2, CNN
 #CNN=NETWORKS.cnn()
 ## Task 3, homebrew CNN
 #CNNHOMEBREW=NETWORKS.cnnhomebrew()
 ## Task 4, multitask CNN
-#CNNTWO=NETWORKS.cnntwo()
+CNNTWO=NETWORKS.cnntwo()
 ## Task 5, Variational Auto-Encoder
 #VAE=NETWORKS.vae()
